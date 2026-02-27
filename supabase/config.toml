@@ -1,0 +1,7 @@
+project_id = "wqgnvcfadpsjkfzaspvw"
+
+[functions.analyze-waste]
+verify_jwt = false
+
+[functions.verify-bin]
+verify_jwt = false
