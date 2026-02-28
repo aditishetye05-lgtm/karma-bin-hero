@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, AlertTriangle, CheckCircle2, Sparkles, ThumbsUp, ThumbsDown, ChevronDown } from "lucide-react";
+import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import { ConfettiOverlay } from "./ConfettiOverlay";
 import { ScanResultCard } from "./ScanResultCard";
@@ -40,6 +40,8 @@ export function ScanFlow() {
   const [pointsEarned, setPointsEarned] = useState(0);
   const [loading, setLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const verifyFileInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanId, setScanId] = useState<string | null>(null);
@@ -93,8 +95,33 @@ export function ScanFlow() {
     await analyzeImage(image);
   };
 
-  const handleVerifyCapture = async () => {
-    const image = capturePhoto();
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setCapturedImage(dataUrl);
+      await analyzeImage(dataUrl);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleVerifyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      await handleVerifyCapture(dataUrl);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleVerifyCapture = async (uploadedImage?: string) => {
+    const image = uploadedImage || capturePhoto();
     if (!image || !result || !user) return;
     setStep("verifying");
     try {
@@ -163,18 +190,27 @@ export function ScanFlow() {
           <div className="glass-card rounded-3xl overflow-hidden aspect-[4/3] relative">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
             {!stream && (
-              <div className="absolute inset-0 flex items-center justify-center bg-muted">
+              <div className="absolute inset-0 flex items-center justify-center bg-muted gap-3 flex-col">
                 <Button onClick={startCamera} className="rounded-2xl eco-gradient text-primary-foreground font-semibold gap-2 px-6 py-5">
                   <Camera className="w-5 h-5" /> Open Camera
+                </Button>
+                <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="rounded-2xl font-semibold gap-2 px-6 py-5">
+                  <ImagePlus className="w-5 h-5" /> Upload Photo
                 </Button>
               </div>
             )}
           </div>
           {stream && (
-            <Button onClick={handleCapture} className="w-full rounded-2xl eco-gradient text-primary-foreground font-display font-semibold py-6 text-lg">
-              <Camera className="mr-2 w-5 h-5" /> Capture & Analyze
-            </Button>
+            <div className="flex gap-3">
+              <Button onClick={handleCapture} className="flex-1 rounded-2xl eco-gradient text-primary-foreground font-display font-semibold py-6 text-lg">
+                <Camera className="mr-2 w-5 h-5" /> Capture & Analyze
+              </Button>
+              <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="rounded-2xl font-semibold py-6">
+                <ImagePlus className="w-5 h-5" />
+              </Button>
+            </div>
           )}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
         </div>
       )}
 
@@ -227,9 +263,13 @@ export function ScanFlow() {
           <div className="glass-card rounded-3xl overflow-hidden aspect-[4/3]">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
           </div>
-          <Button onClick={handleVerifyCapture} className="w-full rounded-2xl eco-gradient text-primary-foreground font-display font-semibold py-6 text-lg">
+          <Button onClick={() => handleVerifyCapture()} className="w-full rounded-2xl eco-gradient text-primary-foreground font-display font-semibold py-6 text-lg">
             <CheckCircle2 className="mr-2 w-5 h-5" /> Verify
           </Button>
+          <Button onClick={() => verifyFileInputRef.current?.click()} variant="outline" className="w-full rounded-2xl font-semibold py-5 gap-2">
+            <ImagePlus className="w-5 h-5" /> Upload Verification Photo
+          </Button>
+          <input ref={verifyFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleVerifyFileUpload} />
         </div>
       )}
 
