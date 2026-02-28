@@ -20,26 +20,24 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3-flash-preview",
         messages: [
           {
             role: "system",
-            content: `You are a waste classification AI. Analyze the image and classify the item into exactly one category: Paper, Wet, Plastic, Glass, Metal, or E-waste.
+            content: `You are a waste classification AI for Goa, India. Analyze the image and return structured classification data.
 
-Also determine if the item needs cleaning (has food residue, is dirty, or is mixed with other waste).
-
-Respond with ONLY valid JSON in this exact format:
-{
-  "category": "Paper|Wet|Plastic|Glass|Metal|E-waste",
-  "item_name": "short description of the item",
-  "needs_cleaning": true|false,
-  "cleaning_instructions": "instructions if needs_cleaning is true, otherwise null"
-}`
+Classify the item into exactly one category: Paper, Wet, Plastic, Glass, Metal, or E-waste.
+Identify the specific item type (e.g. "PET bottle", "newspaper", "banana peel").
+Identify the primary material (e.g. "PET plastic", "cardboard", "organic matter", "aluminium").
+Assess recyclability: "recyclable", "compostable", "non-recyclable", or "special-handling".
+Provide a confidence score from 0.0 to 1.0.
+Determine if cleaning is needed (food residue, contamination).
+Give a disposal recommendation specific to Goa's waste system (Blue bin for dry recyclables, Green bin for wet/organic).`
           },
           {
             role: "user",
             content: [
-              { type: "text", text: "Classify this waste item:" },
+              { type: "text", text: "Classify this waste item with full structured details:" },
               { type: "image_url", image_url: { url: image } }
             ]
           }
@@ -49,16 +47,21 @@ Respond with ONLY valid JSON in this exact format:
             type: "function",
             function: {
               name: "classify_waste",
-              description: "Classify a waste item",
+              description: "Classify a waste item with structured fields",
               parameters: {
                 type: "object",
                 properties: {
                   category: { type: "string", enum: ["Paper", "Wet", "Plastic", "Glass", "Metal", "E-waste"] },
-                  item_name: { type: "string" },
+                  item_name: { type: "string", description: "Short description of the item" },
+                  item_type: { type: "string", description: "Specific item type e.g. PET bottle, newspaper" },
+                  material: { type: "string", description: "Primary material e.g. PET plastic, cardboard" },
+                  recyclability: { type: "string", enum: ["recyclable", "compostable", "non-recyclable", "special-handling"] },
+                  confidence: { type: "number", description: "Confidence score 0.0-1.0" },
                   needs_cleaning: { type: "boolean" },
-                  cleaning_instructions: { type: "string" }
+                  cleaning_instructions: { type: "string" },
+                  disposal_recommendation: { type: "string", description: "Region-specific disposal advice for Goa" }
                 },
-                required: ["category", "item_name", "needs_cleaning"],
+                required: ["category", "item_name", "item_type", "material", "recyclability", "confidence", "needs_cleaning", "disposal_recommendation"],
                 additionalProperties: false
               }
             }
@@ -93,7 +96,6 @@ Respond with ONLY valid JSON in this exact format:
       });
     }
 
-    // Fallback: try parsing content
     const content = data.choices?.[0]?.message?.content || "";
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {

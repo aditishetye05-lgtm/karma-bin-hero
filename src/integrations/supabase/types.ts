@@ -121,39 +121,96 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_feedback: {
+        Row: {
+          city: string | null
+          corrected_category: string | null
+          corrected_material: string | null
+          created_at: string
+          feedback_type: string
+          id: string
+          notes: string | null
+          original_category: string
+          original_material: string | null
+          scan_id: string
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          corrected_category?: string | null
+          corrected_material?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          notes?: string | null
+          original_category: string
+          original_material?: string | null
+          scan_id: string
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          corrected_category?: string | null
+          corrected_material?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          notes?: string | null
+          original_category?: string
+          original_material?: string | null
+          scan_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       scans: {
         Row: {
           category: string
+          confidence: number | null
           created_at: string
+          disposal_recommendation: string | null
           id: string
           image_url: string | null
           item_name: string | null
+          item_type: string | null
+          material: string | null
           needs_cleaning: boolean
           points_earned: number
+          recyclability: string | null
           user_id: string
           verification_image_url: string | null
           verified: boolean
         }
         Insert: {
           category: string
+          confidence?: number | null
           created_at?: string
+          disposal_recommendation?: string | null
           id?: string
           image_url?: string | null
           item_name?: string | null
+          item_type?: string | null
+          material?: string | null
           needs_cleaning?: boolean
           points_earned?: number
+          recyclability?: string | null
           user_id: string
           verification_image_url?: string | null
           verified?: boolean
         }
         Update: {
           category?: string
+          confidence?: number | null
           created_at?: string
+          disposal_recommendation?: string | null
           id?: string
           image_url?: string | null
           item_name?: string | null
+          item_type?: string | null
+          material?: string | null
           needs_cleaning?: boolean
           points_earned?: number
+          recyclability?: string | null
           user_id?: string
           verification_image_url?: string | null
           verified?: boolean
