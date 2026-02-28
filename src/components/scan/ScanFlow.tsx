@@ -3,9 +3,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
+import { Camera, Loader2, AlertTriangle, CheckCircle2, Sparkles, ThumbsUp, ThumbsDown, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { ConfettiOverlay } from "./ConfettiOverlay";
+import { ScanResultCard } from "./ScanResultCard";
+import { FeedbackPanel } from "./FeedbackPanel";
 
 const CATEGORY_POINTS: Record<string, number> = {
   Plastic: 40, "E-waste": 50, Metal: 20, Glass: 20, Paper: 10, Wet: 5,
@@ -17,11 +19,16 @@ const BIN_COLORS: Record<string, string> = {
 
 type ScanStep = "capture" | "analyzing" | "result" | "cleaning" | "verify" | "verifying" | "done";
 
-interface ScanResult {
+export interface ScanResult {
   category: string;
   item_name: string;
+  item_type?: string;
+  material?: string;
+  recyclability?: string;
+  confidence?: number;
   needs_cleaning: boolean;
   cleaning_instructions?: string;
+  disposal_recommendation?: string;
 }
 
 export function ScanFlow() {
@@ -35,6 +42,8 @@ export function ScanFlow() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [scanId, setScanId] = useState<string | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const startCamera = useCallback(async () => {
     try {
@@ -95,16 +104,22 @@ export function ScanFlow() {
       if (error) throw error;
       if (data.verified) {
         const pts = CATEGORY_POINTS[result.category] || 10;
-        // Save scan
-        await supabase.from("scans").insert({
+        const { data: scanData } = await supabase.from("scans").insert({
           user_id: user.id,
           category: result.category,
           item_name: result.item_name,
+          item_type: result.item_type || null,
+          material: result.material || null,
+          recyclability: result.recyclability || null,
+          confidence: result.confidence || null,
+          disposal_recommendation: result.disposal_recommendation || null,
           points_earned: pts,
           verified: true,
           needs_cleaning: result.needs_cleaning,
-        });
-        // Update points
+        }).select("id").single();
+
+        if (scanData) setScanId(scanData.id);
+
         const { data: profile } = await supabase
           .from("profiles")
           .select("points")
@@ -135,6 +150,8 @@ export function ScanFlow() {
     setCapturedImage(null);
     setShowConfetti(false);
     setPointsEarned(0);
+    setScanId(null);
+    setShowFeedback(false);
   };
 
   return (
@@ -193,26 +210,12 @@ export function ScanFlow() {
       )}
 
       {step === "result" && result && (
-        <div className="glass-card rounded-3xl p-6 space-y-4 animate-scale-in">
-          <div className="text-center space-y-2">
-            <div className="w-16 h-16 rounded-2xl eco-gradient flex items-center justify-center mx-auto">
-              <Sparkles className="w-7 h-7 text-primary-foreground" />
-            </div>
-            <h3 className="font-display font-bold text-xl">{result.item_name}</h3>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary font-semibold text-sm">
-              {result.category} • +{CATEGORY_POINTS[result.category] || 10} points
-            </div>
-          </div>
-          <div className="bg-muted rounded-2xl p-4 text-center">
-            <p className="text-sm text-muted-foreground">Place in the <strong className="text-foreground">{BIN_COLORS[result.category]} Bin</strong></p>
-          </div>
-          <Button
-            onClick={() => { setStep("verify"); startCamera(); }}
-            className="w-full rounded-2xl eco-gradient text-primary-foreground font-semibold py-5"
-          >
-            <Camera className="mr-2 w-5 h-5" /> Verify Placement
-          </Button>
-        </div>
+        <ScanResultCard
+          result={result}
+          categoryPoints={CATEGORY_POINTS}
+          binColors={BIN_COLORS}
+          onVerify={() => { setStep("verify"); startCamera(); }}
+        />
       )}
 
       {step === "verify" && (
@@ -244,6 +247,17 @@ export function ScanFlow() {
           </div>
           <h3 className="font-display font-bold text-2xl">+{pointsEarned} Points!</h3>
           <p className="text-muted-foreground">Great job! You've made Goa cleaner 🌊</p>
+
+          {result && scanId && user && (
+            <FeedbackPanel
+              result={result}
+              scanId={scanId}
+              userId={user.id}
+              showFeedback={showFeedback}
+              onToggle={() => setShowFeedback(!showFeedback)}
+            />
+          )}
+
           <Button onClick={reset} className="rounded-2xl eco-gradient text-primary-foreground font-semibold px-8 py-5">
             Scan Another Item
           </Button>
