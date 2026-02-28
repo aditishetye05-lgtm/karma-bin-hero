@@ -70,6 +70,8 @@ serve(async (req) => {
       const errText = await response.text();
       console.error("AI gateway error:", response.status, errText);
       throw new Error(`AI gateway error: ${response.status}`);
+    }
+
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
