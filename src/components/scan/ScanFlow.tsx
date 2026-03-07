@@ -279,12 +279,23 @@ export function ScanFlow() {
       )}
 
       {step === "result" && result && (
-        <ScanResultCard
-          result={result}
-          categoryPoints={CATEGORY_POINTS}
-          binColors={BIN_COLORS}
-          onVerify={() => { setStep("verify"); startCamera(); }}
-        />
+        <div className="space-y-4">
+          <ScanResultCard
+            result={result}
+            categoryPoints={CATEGORY_POINTS}
+            binColors={BIN_COLORS}
+            onVerify={() => { setStep("verify"); startCamera(); }}
+          />
+          {user && (
+            <FeedbackPanel
+              result={result}
+              userId={user.id}
+              showFeedback={showFeedback}
+              onToggle={() => setShowFeedback(!showFeedback)}
+              showCorrectionByDefault
+            />
+          )}
+        </div>
       )}
 
       {step === "verify" && (
