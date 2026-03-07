@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus, ScanBarcode } from "lucide-react";
+import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus, ScanBarcode, Video } from "lucide-react";
 import { toast } from "sonner";
 import { ConfettiOverlay } from "./ConfettiOverlay";
 import { ScanResultCard } from "./ScanResultCard";
@@ -14,8 +14,13 @@ const CATEGORY_POINTS: Record<string, number> = {
   Plastic: 40, "E-waste": 50, Metal: 20, Glass: 20, Paper: 10, Wet: 5,
 };
 
-const BIN_COLORS: Record<string, string> = {
-  Plastic: "Blue", Paper: "Blue", Glass: "Blue", Metal: "Blue", "E-waste": "Blue", Wet: "Green",
+const BIN_COLORS: Record<string, { color: string; hex: string }> = {
+  Plastic: { color: "Blue", hex: "#3b82f6" },
+  Paper: { color: "Blue", hex: "#3b82f6" },
+  Glass: { color: "Green", hex: "#22c55e" },
+  Metal: { color: "Yellow", hex: "#eab308" },
+  "E-waste": { color: "Red", hex: "#ef4444" },
+  Wet: { color: "Green", hex: "#22c55e" },
 };
 
 type ScanStep = "capture" | "analyzing" | "result" | "cleaning" | "verify" | "verifying" | "done";
