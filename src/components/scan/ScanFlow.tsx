@@ -47,6 +47,24 @@ export function ScanFlow() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanId, setScanId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showBarcode, setShowBarcode] = useState(false);
+
+  const handleBarcodeScan = async (code: string) => {
+    setShowBarcode(false);
+    setCapturedImage(null);
+    setStep("analyzing");
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-waste", {
+        body: { barcode: code },
+      });
+      if (error) throw error;
+      setResult(data as ScanResult);
+      setStep(data.needs_cleaning ? "cleaning" : "result");
+    } catch {
+      toast.error("Could not identify item from barcode. Try scanning with camera instead.");
+      setStep("capture");
+    }
+  };
 
   const startCamera = useCallback(async () => {
     try {
