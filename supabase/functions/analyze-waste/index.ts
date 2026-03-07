@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,30 @@ serve(async (req) => {
     const { image, barcode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Fetch recent user corrections to improve AI accuracy
+    let correctionsContext = "";
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const sb = createClient(supabaseUrl, supabaseKey);
+      const { data: corrections } = await sb
+        .from("scan_feedback")
+        .select("original_category, corrected_category, notes, original_material, corrected_material")
+        .eq("feedback_type", "corrected")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (corrections && corrections.length > 0) {
+        const examples = corrections.map((c) => {
+          const note = c.notes || "";
+          const actualItem = note.match(/Actual item: ([^|]+)/)?.[1]?.trim() || "unknown";
+          return `- "${actualItem}" was misidentified as ${c.original_category}${c.corrected_category ? `, correct category: ${c.corrected_category}` : ""}${c.corrected_material ? `, correct material: ${c.corrected_material}` : ""}`;
+        }).join("\n");
+        correctionsContext = `\n\nIMPORTANT - Users have reported these past misidentifications. Learn from them:\n${examples}\nDo NOT repeat these mistakes.`;
+      }
+    } catch (e) {
+      console.error("Could not fetch corrections:", e);
+    }
 
     const userContent = barcode
       ? [{ type: "text", text: `Classify this waste item based on its barcode: ${barcode}. Identify what product this barcode belongs to and classify it.` }]
@@ -39,7 +64,14 @@ Identify the primary material (e.g. "PET plastic", "cardboard", "organic matter"
 Assess recyclability: "recyclable", "compostable", "non-recyclable", or "special-handling".
 Provide a confidence score from 0.0 to 1.0.
 Determine if cleaning is needed (food residue, contamination).
-Give a disposal recommendation specific to Goa's waste system (Blue bin for dry recyclables, Green bin for wet/organic).`
+
+Bin color guide for Goa:
+- Blue bin: Plastic, Paper (dry recyclables)
+- Green bin: Wet waste, Glass
+- Yellow bin: Metal
+- Red bin: E-waste
+
+Give a disposal recommendation mentioning the correct bin COLOR for the category.${correctionsContext}`
           },
           {
             role: "user",
