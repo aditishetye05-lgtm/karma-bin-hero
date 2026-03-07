@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus, ScanBarcode, Video } from "lucide-react";
+import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus, ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
 import { ConfettiOverlay } from "./ConfettiOverlay";
 import { ScanResultCard } from "./ScanResultCard";
@@ -159,7 +159,7 @@ export function ScanFlow() {
     setStep("verifying");
     try {
       const { data, error } = await supabase.functions.invoke("verify-bin", {
-        body: { image, expected_bin: BIN_COLORS[result.category] },
+        body: { image, expected_bin: BIN_COLORS[result.category]?.color },
       });
       if (error) throw error;
       if (data.verified) {
@@ -316,7 +316,7 @@ export function ScanFlow() {
         <div className="space-y-4">
           <div className="glass-card rounded-3xl p-4 text-center">
             <p className="text-sm text-muted-foreground mb-1">Take a photo of the item in the</p>
-            <p className="font-display font-bold text-lg text-primary">{BIN_COLORS[result?.category || "Plastic"]} Bin</p>
+            <p className="font-display font-bold text-lg" style={{ color: BIN_COLORS[result?.category || "Plastic"]?.hex }}>{BIN_COLORS[result?.category || "Plastic"]?.color} Bin</p>
           </div>
           <div className="glass-card rounded-3xl overflow-hidden aspect-[4/3]">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />

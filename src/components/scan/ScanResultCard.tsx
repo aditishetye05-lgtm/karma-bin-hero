@@ -5,12 +5,13 @@ import type { ScanResult } from "./ScanFlow";
 interface ScanResultCardProps {
   result: ScanResult;
   categoryPoints: Record<string, number>;
-  binColors: Record<string, string>;
+  binColors: Record<string, { color: string; hex: string }>;
   onVerify: () => void;
 }
 
 export function ScanResultCard({ result, categoryPoints, binColors, onVerify }: ScanResultCardProps) {
   const confidence = result.confidence ? Math.round(result.confidence * 100) : null;
+  const bin = binColors[result.category] || { color: "Blue", hex: "#3b82f6" };
 
   return (
     <div className="glass-card rounded-3xl p-6 space-y-4 animate-scale-in">
@@ -63,8 +64,9 @@ export function ScanResultCard({ result, categoryPoints, binColors, onVerify }: 
         </div>
       )}
 
-      <div className="bg-muted rounded-2xl p-4 text-center">
-        <p className="text-sm text-muted-foreground">Place in the <strong className="text-foreground">{binColors[result.category]} Bin</strong></p>
+      <div className="rounded-2xl p-4 text-center border-2" style={{ borderColor: bin.hex, backgroundColor: `${bin.hex}15` }}>
+        <p className="text-sm text-muted-foreground">Place in the</p>
+        <p className="font-display font-bold text-lg" style={{ color: bin.hex }}>{bin.color} Bin</p>
       </div>
 
       <Button
