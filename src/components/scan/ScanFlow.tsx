@@ -3,11 +3,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus } from "lucide-react";
+import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus, ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
 import { ConfettiOverlay } from "./ConfettiOverlay";
 import { ScanResultCard } from "./ScanResultCard";
 import { FeedbackPanel } from "./FeedbackPanel";
+import { BarcodeScanner } from "./BarcodeScanner";
 
 const CATEGORY_POINTS: Record<string, number> = {
   Plastic: 40, "E-waste": 50, Metal: 20, Glass: 20, Paper: 10, Wet: 5,
