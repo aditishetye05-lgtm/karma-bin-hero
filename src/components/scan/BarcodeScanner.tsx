@@ -16,28 +16,38 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
 
   useEffect(() => {
     const scannerId = "barcode-reader";
-    const scanner = new Html5Qrcode(scannerId);
-    scannerRef.current = scanner;
+    let scanner: Html5Qrcode | null = null;
+    let isRunning = false;
 
-    scanner
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
-        (decodedText) => {
-          scanner.stop().then(() => {
-            onScan(decodedText);
-          });
-        },
-        () => {}
-      )
-      .then(() => setStarting(false))
-      .catch(() => {
+    const startScanner = async () => {
+      scanner = new Html5Qrcode(scannerId);
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 150 } },
+          (decodedText) => {
+            if (isRunning && scanner) {
+              isRunning = false;
+              scanner.stop().then(() => onScan(decodedText)).catch(() => onScan(decodedText));
+            }
+          },
+          () => {}
+        );
+        isRunning = true;
+        setStarting(false);
+      } catch {
         setError("Could not access camera for barcode scanning.");
         setStarting(false);
-      });
+      }
+    };
+
+    startScanner();
 
     return () => {
-      scanner.stop().catch(() => {});
+      if (isRunning && scanner) {
+        isRunning = false;
+        scanner.stop().catch(() => {});
+      }
     };
   }, [onScan]);
 
