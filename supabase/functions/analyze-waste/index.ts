@@ -9,9 +9,16 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { image } = await req.json();
+    const { image, barcode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const userContent = barcode
+      ? [{ type: "text", text: `Classify this waste item based on its barcode: ${barcode}. Identify what product this barcode belongs to and classify it.` }]
+      : [
+          { type: "text", text: "Classify this waste item with full structured details:" },
+          { type: "image_url", image_url: { url: image } }
+        ];
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -24,7 +31,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a waste classification AI for Goa, India. Analyze the image and return structured classification data.
+            content: `You are a waste classification AI for Goa, India. ${barcode ? "Look up the barcode to identify the product, then classify its packaging/material as waste." : "Analyze the image and return structured classification data."}
 
 Classify the item into exactly one category: Paper, Wet, Plastic, Glass, Metal, or E-waste.
 Identify the specific item type (e.g. "PET bottle", "newspaper", "banana peel").
@@ -36,10 +43,7 @@ Give a disposal recommendation specific to Goa's waste system (Blue bin for dry 
           },
           {
             role: "user",
-            content: [
-              { type: "text", text: "Classify this waste item with full structured details:" },
-              { type: "image_url", image_url: { url: image } }
-            ]
+            content: userContent
           }
         ],
         tools: [

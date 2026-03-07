@@ -3,11 +3,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus } from "lucide-react";
+import { Camera, Loader2, AlertTriangle, CheckCircle2, ImagePlus, ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
 import { ConfettiOverlay } from "./ConfettiOverlay";
 import { ScanResultCard } from "./ScanResultCard";
 import { FeedbackPanel } from "./FeedbackPanel";
+import { BarcodeScanner } from "./BarcodeScanner";
 
 const CATEGORY_POINTS: Record<string, number> = {
   Plastic: 40, "E-waste": 50, Metal: 20, Glass: 20, Paper: 10, Wet: 5,
@@ -46,6 +47,24 @@ export function ScanFlow() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [scanId, setScanId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showBarcode, setShowBarcode] = useState(false);
+
+  const handleBarcodeScan = async (code: string) => {
+    setShowBarcode(false);
+    setCapturedImage(null);
+    setStep("analyzing");
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-waste", {
+        body: { barcode: code },
+      });
+      if (error) throw error;
+      setResult(data as ScanResult);
+      setStep(data.needs_cleaning ? "cleaning" : "result");
+    } catch {
+      toast.error("Could not identify item from barcode. Try scanning with camera instead.");
+      setStep("capture");
+    }
+  };
 
   const startCamera = useCallback(async () => {
     try {
@@ -179,6 +198,7 @@ export function ScanFlow() {
     setPointsEarned(0);
     setScanId(null);
     setShowFeedback(false);
+    setShowBarcode(false);
   };
 
   return (
@@ -197,6 +217,9 @@ export function ScanFlow() {
                 <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="rounded-2xl font-semibold gap-2 px-6 py-5">
                   <ImagePlus className="w-5 h-5" /> Upload Photo
                 </Button>
+                <Button onClick={() => setShowBarcode(true)} variant="outline" className="rounded-2xl font-semibold gap-2 px-6 py-5">
+                  <ScanBarcode className="w-5 h-5" /> Scan Barcode
+                </Button>
               </div>
             )}
           </div>
@@ -208,9 +231,19 @@ export function ScanFlow() {
               <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="rounded-2xl font-semibold py-6">
                 <ImagePlus className="w-5 h-5" />
               </Button>
+              <Button onClick={() => { stopCamera(); setShowBarcode(true); }} variant="outline" className="rounded-2xl font-semibold py-6">
+                <ScanBarcode className="w-5 h-5" />
+              </Button>
             </div>
           )}
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+
+          {showBarcode && (
+            <BarcodeScanner
+              onScan={handleBarcodeScan}
+              onClose={() => setShowBarcode(false)}
+            />
+          )}
         </div>
       )}
 
