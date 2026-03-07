@@ -14,8 +14,13 @@ const CATEGORY_POINTS: Record<string, number> = {
   Plastic: 40, "E-waste": 50, Metal: 20, Glass: 20, Paper: 10, Wet: 5,
 };
 
-const BIN_COLORS: Record<string, string> = {
-  Plastic: "Blue", Paper: "Blue", Glass: "Blue", Metal: "Blue", "E-waste": "Blue", Wet: "Green",
+const BIN_COLORS: Record<string, { color: string; hex: string }> = {
+  Plastic: { color: "Blue", hex: "#3b82f6" },
+  Paper: { color: "Blue", hex: "#3b82f6" },
+  Glass: { color: "Green", hex: "#22c55e" },
+  Metal: { color: "Yellow", hex: "#eab308" },
+  "E-waste": { color: "Red", hex: "#ef4444" },
+  Wet: { color: "Green", hex: "#22c55e" },
 };
 
 type ScanStep = "capture" | "analyzing" | "result" | "cleaning" | "verify" | "verifying" | "done";
@@ -48,6 +53,47 @@ export function ScanFlow() {
   const [scanId, setScanId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  const startVideoRecording = () => {
+    if (!stream) return;
+    recordedChunksRef.current = [];
+    const mr = new MediaRecorder(stream, { mimeType: "video/webm" });
+    mr.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+    mr.onstop = async () => {
+      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+      // Extract a frame from the middle of the video for analysis
+      const video = document.createElement("video");
+      video.src = URL.createObjectURL(blob);
+      video.muted = true;
+      video.playsInline = true;
+      await new Promise<void>((resolve) => { video.onloadeddata = () => resolve(); video.load(); });
+      video.currentTime = video.duration / 2;
+      await new Promise<void>((resolve) => { video.onseeked = () => resolve(); });
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d")?.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      URL.revokeObjectURL(video.src);
+      setCapturedImage(dataUrl);
+      stopCamera();
+      await analyzeImage(dataUrl);
+    };
+    mr.start();
+    setIsRecording(true);
+    mediaRecorderRef.current = mr;
+    toast.info("Recording... Tap Stop to analyze.");
+  };
+
+  const stopVideoRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
 
   const handleBarcodeScan = async (code: string) => {
     setShowBarcode(false);
@@ -154,7 +200,7 @@ export function ScanFlow() {
     setStep("verifying");
     try {
       const { data, error } = await supabase.functions.invoke("verify-bin", {
-        body: { image, expected_bin: BIN_COLORS[result.category] },
+        body: { image, expected_bin: BIN_COLORS[result.category]?.color },
       });
       if (error) throw error;
       if (data.verified) {
@@ -190,7 +236,7 @@ export function ScanFlow() {
         setStep("done");
         refetch();
       } else {
-        toast.error(`Please place the item in the ${BIN_COLORS[result.category]} bin and try again.`);
+        toast.error(`Please place the item in the ${BIN_COLORS[result.category]?.color} bin and try again.`);
         setStep("verify");
       }
     } catch {
@@ -218,6 +264,11 @@ export function ScanFlow() {
         <div className="space-y-4">
           <div className="glass-card rounded-3xl overflow-hidden aspect-[4/3] relative">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            {isRecording && (
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-semibold animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-destructive-foreground" /> REC
+              </div>
+            )}
             {!stream && (
               <div className="absolute inset-0 flex items-center justify-center bg-muted gap-3 flex-col">
                 <Button onClick={startCamera} className="rounded-2xl eco-gradient text-primary-foreground font-semibold gap-2 px-6 py-5">
@@ -232,10 +283,13 @@ export function ScanFlow() {
               </div>
             )}
           </div>
-          {stream && (
+          {stream && !isRecording && (
             <div className="flex gap-3">
               <Button onClick={handleCapture} className="flex-1 rounded-2xl eco-gradient text-primary-foreground font-display font-semibold py-6 text-lg">
                 <Camera className="mr-2 w-5 h-5" /> Capture & Analyze
+              </Button>
+              <Button onClick={startVideoRecording} variant="outline" className="rounded-2xl font-semibold py-6" title="Record Video">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
               </Button>
               <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="rounded-2xl font-semibold py-6">
                 <ImagePlus className="w-5 h-5" />
@@ -244,6 +298,11 @@ export function ScanFlow() {
                 <ScanBarcode className="w-5 h-5" />
               </Button>
             </div>
+          )}
+          {stream && isRecording && (
+            <Button onClick={stopVideoRecording} className="w-full rounded-2xl bg-destructive text-destructive-foreground font-display font-semibold py-6 text-lg">
+              ⏹ Stop Recording & Analyze
+            </Button>
           )}
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
@@ -311,7 +370,7 @@ export function ScanFlow() {
         <div className="space-y-4">
           <div className="glass-card rounded-3xl p-4 text-center">
             <p className="text-sm text-muted-foreground mb-1">Take a photo of the item in the</p>
-            <p className="font-display font-bold text-lg text-primary">{BIN_COLORS[result?.category || "Plastic"]} Bin</p>
+            <p className="font-display font-bold text-lg" style={{ color: BIN_COLORS[result?.category || "Plastic"]?.hex }}>{BIN_COLORS[result?.category || "Plastic"]?.color} Bin</p>
           </div>
           <div className="glass-card rounded-3xl overflow-hidden aspect-[4/3]">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
