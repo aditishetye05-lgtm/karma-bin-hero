@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ScanLine, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { HowToUseGuide } from "./HowToUseGuide";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Plastic: "#3b82f6",
@@ -47,6 +48,8 @@ export function DashboardHome({ onScan }: DashboardHomeProps) {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* How to Use Guide */}
+      <HowToUseGuide />
       {/* Points Card */}
       <div className="glass-card rounded-3xl p-6 relative overflow-hidden">
         <div className="absolute inset-0 eco-gradient opacity-10" />
