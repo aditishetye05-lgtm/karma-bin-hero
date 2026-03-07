@@ -53,6 +53,47 @@ export function ScanFlow() {
   const [scanId, setScanId] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showBarcode, setShowBarcode] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  const startVideoRecording = () => {
+    if (!stream) return;
+    recordedChunksRef.current = [];
+    const mr = new MediaRecorder(stream, { mimeType: "video/webm" });
+    mr.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+    mr.onstop = async () => {
+      const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+      // Extract a frame from the middle of the video for analysis
+      const video = document.createElement("video");
+      video.src = URL.createObjectURL(blob);
+      video.muted = true;
+      video.playsInline = true;
+      await new Promise<void>((resolve) => { video.onloadeddata = () => resolve(); video.load(); });
+      video.currentTime = video.duration / 2;
+      await new Promise<void>((resolve) => { video.onseeked = () => resolve(); });
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d")?.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      URL.revokeObjectURL(video.src);
+      setCapturedImage(dataUrl);
+      stopCamera();
+      await analyzeImage(dataUrl);
+    };
+    mr.start();
+    setIsRecording(true);
+    mediaRecorderRef.current = mr;
+    toast.info("Recording... Tap Stop to analyze.");
+  };
+
+  const stopVideoRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
 
   const handleBarcodeScan = async (code: string) => {
     setShowBarcode(false);
