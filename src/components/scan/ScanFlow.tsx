@@ -231,9 +231,19 @@ export function ScanFlow() {
               <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="rounded-2xl font-semibold py-6">
                 <ImagePlus className="w-5 h-5" />
               </Button>
+              <Button onClick={() => { stopCamera(); setShowBarcode(true); }} variant="outline" className="rounded-2xl font-semibold py-6">
+                <ScanBarcode className="w-5 h-5" />
+              </Button>
             </div>
           )}
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+
+          {showBarcode && (
+            <BarcodeScanner
+              onScan={handleBarcodeScan}
+              onClose={() => setShowBarcode(false)}
+            />
+          )}
         </div>
       )}
 
