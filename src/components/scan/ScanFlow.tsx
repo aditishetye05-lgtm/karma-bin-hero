@@ -83,11 +83,20 @@ export function ScanFlow() {
 
   const capturePhoto = useCallback((): string | null => {
     if (!videoRef.current) return null;
+    const video = videoRef.current;
+    if (!video.videoWidth || !video.videoHeight) {
+      toast.error("Camera not ready. Please wait and try again.");
+      return null;
+    }
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    canvas.getContext("2d")?.drawImage(videoRef.current, 0, 0);
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d")?.drawImage(video, 0, 0);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+    if (!dataUrl || dataUrl === "data:," || dataUrl.length < 100) {
+      toast.error("Failed to capture image. Please try again.");
+      return null;
+    }
     stopCamera();
     return dataUrl;
   }, [stopCamera]);
