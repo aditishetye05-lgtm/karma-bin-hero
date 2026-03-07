@@ -195,7 +195,7 @@ export function ScanFlow() {
         setStep("done");
         refetch();
       } else {
-        toast.error(`Please place the item in the ${BIN_COLORS[result.category]} bin and try again.`);
+        toast.error(`Please place the item in the ${BIN_COLORS[result.category]?.color} bin and try again.`);
         setStep("verify");
       }
     } catch {
