@@ -198,6 +198,7 @@ export function ScanFlow() {
     setPointsEarned(0);
     setScanId(null);
     setShowFeedback(false);
+    setShowBarcode(false);
   };
 
   return (
@@ -215,6 +216,9 @@ export function ScanFlow() {
                 </Button>
                 <Button onClick={() => fileInputRef.current?.click()} variant="outline" className="rounded-2xl font-semibold gap-2 px-6 py-5">
                   <ImagePlus className="w-5 h-5" /> Upload Photo
+                </Button>
+                <Button onClick={() => setShowBarcode(true)} variant="outline" className="rounded-2xl font-semibold gap-2 px-6 py-5">
+                  <ScanBarcode className="w-5 h-5" /> Scan Barcode
                 </Button>
               </div>
             )}
